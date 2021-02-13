@@ -41,12 +41,17 @@ namespace FastSerialization
         #region implemenation of IStreamReader
         public virtual void Read(byte[] data, int offset, int length)
         {
+            if (position > int.MaxValue)
+            {
+                throw new Exception("can't use Read when position > 32 bit");
+            }
+
             if (length > endPosition - position)
             {
                 Fill(length);
             }
 
-            Buffer.BlockCopy(bytes, position, data, offset, length);
+            Buffer.BlockCopy(bytes, (int)position, data, offset, length);
             position += length;
         }
         /// <summary>
@@ -150,7 +155,7 @@ namespace FastSerialization
         /// </summary>
         public StreamLabel ReadLabel()
         {
-            return (StreamLabel)(uint)ReadInt32();
+            return (StreamLabel)(long)ReadInt64();
         }
         /// <summary>
         /// Implementation of IStreamReader
@@ -158,8 +163,8 @@ namespace FastSerialization
         public virtual void Goto(StreamLabel label)
         {
             Debug.Assert(label != StreamLabel.Invalid);
-            Debug.Assert((long)label <= int.MaxValue);
-            position = (int)label;
+            Debug.Assert((long)label <= long.MaxValue);
+            position = (long)label;
         }
         /// <summary>
         /// Implementation of IStreamReader
@@ -168,7 +173,7 @@ namespace FastSerialization
         {
             get
             {
-                return (StreamLabel)(uint)position;
+                return (StreamLabel)(ulong)position;
             }
         }
         /// <summary>
@@ -176,7 +181,7 @@ namespace FastSerialization
         /// </summary>
         public virtual void GotoSuffixLabel()
         {
-            const int sizeOfSerializedStreamLabel = 4;
+            const int sizeOfSerializedStreamLabel = 8;
             Goto((StreamLabel)(Length - sizeOfSerializedStreamLabel));
             Goto(ReadLabel());
         }
@@ -200,8 +205,8 @@ namespace FastSerialization
             throw new Exception("Streamreader read past end of buffer");
         }
         internal /*protected*/  byte[] bytes;
-        internal /*protected*/  int position;
-        internal /*protected*/  int endPosition;
+        internal /*protected*/  long position;
+        internal /*protected*/  long endPosition;
         private StringBuilder sb;
         #endregion
     }
@@ -327,8 +332,8 @@ namespace FastSerialization
         /// </summary>
         public void Write(StreamLabel value)
         {
-            Debug.Assert((long)value <= int.MaxValue);
-            Write((int)value);
+            Debug.Assert((long)value <= long.MaxValue);
+            Write((long)value);
         }
         /// <summary>
         /// Implementation of IStreamWriter
@@ -501,7 +506,7 @@ namespace FastSerialization
 
         public void Write(StreamLabel value)
         {
-            Write((int)value);
+            Write((long)value);
         }
         public void Write(string value)
         {
@@ -639,20 +644,20 @@ namespace FastSerialization
             long offset = (long)label - positionInStream;
             if (offset > endPosition || offset < 0)
             {
-                if(!inputStream.CanSeek)
+                if (!inputStream.CanSeek)
                 {
-                    if((long)label < positionInStream + endPosition)
+                    if ((long)label < positionInStream + endPosition)
                     {
                         throw new Exception("Stream does not support seeking backwards");
                     }
                 }
                 positionInStream = (long)label & ~(align - 1);
-                position = (int)((long)label & (align - 1));
+                position = (long)((long)label & (align - 1));
                 endPosition = 0;
             }
             else
             {
-                position = (int)offset;
+                position = (long)offset;
             }
         }
         /// <summary>
@@ -663,15 +668,28 @@ namespace FastSerialization
 
         public override void Read(byte[] data, int offset, int length)
         {
+            if (position > long.MaxValue)
+            {
+                throw new Exception("can't read when positon>long.MaxValue");
+            }
+
+            if (endPosition > long.MaxValue)
+            {
+                throw new Exception("can't read when endPositionInt>long.MaxValue");
+            }
+
+            int positionInt = (int)position;
+            int endPositionInt = (int)endPosition;
+
             // The base class is constrained to only handle reads that are <= size of the cache
             // For larger reads we can take what is available in the cache and satisfy the
             // remainder from the stream
             if (length > (bytes.Length - align))
             {
-                int positionAlignmentOffset = position % align;
+                int positionAlignmentOffset = positionInt % align;
                 int alignedLength = (length & ~(align - 1)) - positionAlignmentOffset;
-                int cacheBytes = Math.Max(0, endPosition - position);
-                Buffer.BlockCopy(bytes, position, data, offset, cacheBytes);
+                int cacheBytes = Math.Max(0, endPositionInt - positionInt);
+                Buffer.BlockCopy(bytes, positionInt, data, offset, cacheBytes);
                 int bytesRead = cacheBytes;
                 while (bytesRead < alignedLength)
                 {
@@ -702,7 +720,7 @@ namespace FastSerialization
                 Fill(length);
             }
 
-            Buffer.BlockCopy(bytes, position, data, offset, length);
+            Buffer.BlockCopy(bytes, positionInt, data, offset, length);
             position += length;
         }
         #endregion 
@@ -734,11 +752,21 @@ namespace FastSerialization
         /// <param name="minimum"></param>
         internal /*protected*/  override void Fill(int minimum)
         {
+            if (position > long.MaxValue)
+            {
+                throw new Exception("can't fill when positon>long.MaxValue");
+            }
+
+            if (endPosition > long.MaxValue)
+            {
+                throw new Exception("can't fill when endPositionInt>long.MaxValue");
+            }
+
             Debug.Assert(minimum <= (bytes.Length - align));
             if (endPosition > position)
             {
-                int slideAmount = position & ~(align - 1);             // round down to stay aligned.  
-                for (int i = slideAmount; i < endPosition; i++)        // Slide everything down.  
+                long slideAmount = position & ~(align - 1);             // round down to stay aligned.  
+                for (long i = slideAmount; i < endPosition; i++)        // Slide everything down.  
                 {
                     bytes[i - slideAmount] = bytes[i];
                 }
@@ -749,7 +777,7 @@ namespace FastSerialization
             }
             else
             {
-                int slideAmount = position & ~(align - 1);
+                long slideAmount = position & ~(align - 1);
                 endPosition = 0;
                 position -= slideAmount;
                 positionInStream += slideAmount;
@@ -759,7 +787,7 @@ namespace FastSerialization
                     long lastBlock = Math.Max(0, (inputStream.Length - bytes.Length + align) & ~(align - 1));
                     if (positionInStream >= lastBlock)
                     {
-                        int adjustBack = (int)(positionInStream - lastBlock);
+                        long adjustBack = (long)(positionInStream - lastBlock);
                         positionInStream -= adjustBack;
                         position += adjustBack;
                     }
@@ -774,7 +802,7 @@ namespace FastSerialization
                 // Non-seekable streams: We need to read forward. We already did error checking
                 //                       in Goto() to ensure that the stream movement is going
                 //                       forward, not backwards.
-                if(inputStream.CanSeek)
+                if (inputStream.CanSeek)
                 {
                     inputStream.Seek(positionInStream + endPosition, SeekOrigin.Begin);
                 }
@@ -797,13 +825,13 @@ namespace FastSerialization
                 //
                 // In the non-streaming (seekable) case we do want to buffer because that lets the
                 // reader achieve higher throughput.
-                int fillSize = inputStream.CanSeek ? bytes.Length : (position + minimum + (align-1)) & ~(align-1);
-                
+                long fillSize = inputStream.CanSeek ? bytes.Length : (position + minimum + (align - 1)) & ~(align - 1);
 
-                for (; endPosition < fillSize; )
+
+                for (; endPosition < fillSize;)
                 {
                     System.Threading.Thread.Sleep(0);       // allow for Thread.Interrupt
-                    int count = inputStream.Read(bytes, endPosition, fillSize - endPosition);
+                    long count = inputStream.Read(bytes, (int)endPosition, (int)(fillSize - endPosition));
                     inputStreamBytesRead += count;
                     if (count == 0)
                     {
@@ -951,7 +979,7 @@ namespace FastSerialization
                             int position = r.Next(0, origData.Length);
                             int size = r.Next(0, bufferSize) + 1;
 
-                            reader.Goto((StreamLabel)(uint)position);
+                            reader.Goto((StreamLabel)(ulong)position);
                             Compare(reader, origData, position, size);
                         }
                         reader.Close();
@@ -1071,10 +1099,10 @@ namespace FastSerialization
         public override StreamLabel GetLabel()
         {
             long len = Length;
-            if (len != (uint)len)
-            {
-                throw new NotSupportedException("Streams larger than 4 GB.  You need to use /MaxEventCount to limit the size.");
-            }
+            //if (len != (uint)len)
+            //{
+            //    throw new NotSupportedException("Streams larger than 4 GB.  You need to use /MaxEventCount to limit the size.");
+            //}
 
             return (StreamLabel)len;
         }

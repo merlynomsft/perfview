@@ -1886,13 +1886,13 @@ namespace Microsoft.Diagnostics.Tracing.Etlx
                 // Show status every 128K events
                 if ((rawEventCount & 0x1FFFF) == 0)
                 {
-                    var curOutputSizeMB = ((double)(uint)writer.GetLabel()) / 1000000.0;
+                    var curOutputSizeMB = ((double)(long)writer.GetLabel()) / 1000000.0;
                     // Currently ETLX has a size restriction of 4Gig.  Thus if we are getting big, start truncating.  
-                    if (curOutputSizeMB > 3500)
-                    {
-                        processingDisabled = true;
-                    }
-
+                    //if (curOutputSizeMB > 3500)
+                    //{
+                    //    processingDisabled = true;
+                    //}
+                    
                     if (options != null && options.ConversionLog != null)
                     {
                         if (rawEventCount == 0)
@@ -1914,14 +1914,14 @@ namespace Microsoft.Diagnostics.Tracing.Etlx
                             {
                                 message = "  Before StartMSec truncating";
                             }
-                            else if (eventCount >= maxEventCount)
-                            {
-                                message = "  Hit MaxEventCount, truncating.";
-                            }
-                            else if (curOutputSizeMB > 3500)
-                            {
-                                message = "  Hit File size limit (3.5Gig) truncating.";
-                            }
+                            //else if (eventCount >= maxEventCount)
+                            //{
+                            //    message = "  Hit MaxEventCount, truncating.";
+                            //}
+                            //else if (curOutputSizeMB > 3500)
+                            //{
+                            //    message = "  Hit File size limit (3.5Gig) truncating.";
+                            //}
 
                             options.ConversionLog.WriteLine(
                                 "[Sec {0,4:f0} Read {1,10:n0} events. At {2,7:n0}ms.  Wrote {3,4:f0}MB ({4,3:f0}%).  EstDone {5,2:f0} min {6,2:f0} sec.{7}]",
@@ -1954,13 +1954,13 @@ namespace Microsoft.Diagnostics.Tracing.Etlx
                     }
                     return;
                 }
-                else
-                {
-                    if (maxEventCount <= eventCount)
-                    {
-                        processingDisabled = true;
-                    }
-                }
+                //else
+                //{
+                //    if (maxEventCount <= eventCount)
+                //    {
+                //        processingDisabled = true;
+                //    }
+                //}
                 // Sadly we have seen cases of merged ETL files where there are events past the end of the session.
                 // This confuses later logic so insure that this does not happen.  Note that we also want the
                 // any module-DCStops to happen at sessionEndTime so we have to do this after processing all events
@@ -3532,7 +3532,7 @@ namespace Microsoft.Diagnostics.Tracing.Etlx
                 serializer.Write((byte)0);
             }
 
-            Debug.Assert((int)serializer.Writer.GetLabel() % 8 == 0);
+            Debug.Assert((long)serializer.Writer.GetLabel() % 8 == 0);
 
             serializer.Log("<Marker name=\"RawEvents\"/>");
             lazyRawEvents.Write(serializer, delegate
