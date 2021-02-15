@@ -608,7 +608,7 @@ namespace PerfView
         }
 
 
-#if DEBUG   // WPF calles the ToString nodes sometimes to do automation.   Don't waste time in retail builds!
+#if FALSE   // WPF calles the ToString nodes sometimes to do automation.   Don't waste time in builds!
         public override string ToString()
         {
 

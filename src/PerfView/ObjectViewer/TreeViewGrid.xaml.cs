@@ -722,7 +722,7 @@ namespace PerfView
             public string DisplayField6 { get { return m_treeView.m_controller.ColumnValue(Data, 2); } set { } }
 
 
-#if DEBUG   // WPF calls the ToString nodes sometimes to do automation.   Don't waste time in retail builds!
+#if FALSE   // WPF calls the ToString nodes sometimes to do automation.   Don't waste time in builds!
             public override string ToString()
             {
                 if (Data == null)

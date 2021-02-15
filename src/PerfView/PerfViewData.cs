@@ -4342,6 +4342,12 @@ table {
             }
 
             var eventSource = events.GetSource();
+
+            eventSource.ProcessProgress += delegate (string status)
+            {
+                log.WriteLine($"EventSource enumeration progress: {status}");
+            };
+
             var sample = new StackSourceSample(stackSource);
 
             if (streamName == "Thread Time (with Tasks)")
@@ -6109,6 +6115,7 @@ table {
                         stackSource.AddSample(sample);
                     }
                 };
+
                 eventSource.Process();
 
                 var aveCumMetric = sumCumMetric / cumCount;
@@ -7186,9 +7193,9 @@ table {
             {
                 m_Children.Add(new PerfViewStackSource(this, "CPU"));
                 experimental.Children.Add(new AutomatedAnalysisReport(this));
-                if (!App.CommandLineArgs.ShowOptimizationTiers &&
+                if (!App.CommandLineArgs.ShowOptimizationTiers /* &&
                     tracelog.Events.Any(
-                        e => e is MethodLoadUnloadTraceDataBase td && td.OptimizationTier != OptimizationTier.Unknown))
+                        e => e is MethodLoadUnloadTraceDataBase td && td.OptimizationTier != OptimizationTier.Unknown)*/)
                 {
                     advanced.Children.Add(new PerfViewStackSource(this, "CPU (with Optimization Tiers)"));
                 }
@@ -8558,10 +8565,10 @@ table {
 
             m_Children.Add(new PerfViewStackSource(this, "CPU"));
 
-            if (!App.CommandLineArgs.ShowOptimizationTiers &&
+            if (!App.CommandLineArgs.ShowOptimizationTiers /*&&
                 m_traceLog != null &&
                 m_traceLog.Events.Any(
-                    e => e is MethodLoadUnloadTraceDataBase td && td.OptimizationTier != OptimizationTier.Unknown))
+                    e => e is MethodLoadUnloadTraceDataBase td && td.OptimizationTier != OptimizationTier.Unknown)*/)
             {
                 advanced.AddChild(new PerfViewStackSource(this, "CPU (with Optimization Tiers)"));
             }

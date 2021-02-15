@@ -195,7 +195,7 @@ namespace Microsoft.Diagnostics.Tracing.Etlx
             using (var source = new EventPipeEventSource(filePath))
             {
                 CreateFromEventPipeEventSources(source, etlxFilePath, options);
-                
+
                 if (source.EventsLost != 0 && options != null && options.OnLostEvents != null)
                 {
                     options.OnLostEvents(false, source.EventsLost, 0);
@@ -1892,7 +1892,7 @@ namespace Microsoft.Diagnostics.Tracing.Etlx
                     //{
                     //    processingDisabled = true;
                     //}
-                    
+
                     if (options != null && options.ConversionLog != null)
                     {
                         if (rawEventCount == 0)
@@ -1973,7 +1973,7 @@ namespace Microsoft.Diagnostics.Tracing.Etlx
                 {
                     options.ConversionLog.WriteLine("WARNING, events out of order! This breaks event search.  Jumping from {0:n3} back to {1:n3} for {2} EventID {3} Thread {4}",
                         QPCTimeToRelMSec(lastQPCEventTime), data.TimeStampRelativeMSec, data.ProviderName, data.ID, data.ThreadID);
-                    firstTimeInversion = (EventIndex) (uint) eventCount;
+                    firstTimeInversion = (EventIndex)(uint)eventCount;
                 }
 
                 lastQPCEventTime = data.TimeStampQPC;
@@ -2102,7 +2102,7 @@ namespace Microsoft.Diagnostics.Tracing.Etlx
 #endif
 
             // EventPipe doesn't set EventsLost until after Process is called.
-            if(rawEvents is EventPipeEventSource)
+            if (rawEvents is EventPipeEventSource)
             {
                 eventsLost = rawEvents.EventsLost;
             }
@@ -3054,7 +3054,7 @@ namespace Microsoft.Diagnostics.Tracing.Etlx
                 {
                     relatedActivityIDPtr = (Guid*)(extendedData[i].DataPtr);
                 }
-                else if(extendedData[i].ExtType == TraceEventNativeMethods.EVENT_HEADER_EXT_TYPE_CONTAINER_ID)
+                else if (extendedData[i].ExtType == TraceEventNativeMethods.EVENT_HEADER_EXT_TYPE_CONTAINER_ID)
                 {
                     containerID = Marshal.PtrToStringAnsi((IntPtr)extendedData[i].DataPtr, (int)extendedData[i].DataSize);
                 }
@@ -3062,7 +3062,7 @@ namespace Microsoft.Diagnostics.Tracing.Etlx
 
             if (relatedActivityIDPtr != null)
             {
-                if(relatedActivityIDs.Count == 0)
+                if (relatedActivityIDs.Count == 0)
                 {
                     // Insert a synthetic value since 0 represents "no related activity ID".
                     relatedActivityIDs.Add(Guid.Empty);
@@ -3520,7 +3520,7 @@ namespace Microsoft.Diagnostics.Tracing.Etlx
 
             // Align to 8 bytes
             StreamLabel pos = serializer.Writer.GetLabel();
-            int align = ((int)pos + 1) & 7;          // +1 take into account we always write the count
+            long align = ((long)pos + 1) & 7;          // +1 take into account we always write the count
             if (align > 0)
             {
                 align = 8 - align;
@@ -3848,6 +3848,7 @@ namespace Microsoft.Diagnostics.Tracing.Etlx
         }
         int IFastSerializableVersion.Version
         {
+            // change me to 74!
             get { return 73; }
         }
         int IFastSerializableVersion.MinimumVersionCanRead
@@ -4338,9 +4339,18 @@ namespace Microsoft.Diagnostics.Tracing.Etlx
 
             try
             {
+                long rawEventCount = 0;
+
+                Stopwatch sw = new Stopwatch();
+                sw.Start();
                 while (enumerator.MoveNext())
                 {
+                    ReportProgress(enumerator, rawEventCount, sw);
+
                     Dispatch(enumerator.Current);
+
+                    rawEventCount++;
+
                     if (stopProcessing)
                     {
                         OnCompleted();
@@ -4353,12 +4363,39 @@ namespace Microsoft.Diagnostics.Tracing.Etlx
                 events.log.FreeReader(asBase.reader);
             }
             OnCompleted();
+
             return true;
         }
+
+        private void ReportProgress(IEnumerator<TraceEvent> enumerator, long rawEventCount, Stopwatch sw)
+        {
+            if (ProcessProgress != null)
+            {
+                if (rawEventCount % 100000 == 0) // do not use ElapsedMilliseconds too often
+                {
+                    // Show status every 5s
+                    if (sw.ElapsedMilliseconds > 5000)
+                    {
+                        try
+                        {
+                            var donePer = enumerator.Current.TimeStampRelativeMSec / events.EndTimeRelativeMSec;
+                            string status = $"[{donePer}]";
+
+                            ProcessProgress(status);
+                        }
+                        catch (Exception) { }
+                        sw.Restart();
+                    }
+                }
+            }
+        }
+
         /// <summary>
         /// override
         /// </summary>
         public override int EventsLost { get { return TraceLog.EventsLost; } }
+
+        public event Action<string> ProcessProgress;
 
 #if false // TODO FIX NOW use or remove 4/2014
         // TODO FIX NOW ACTIVITIES: review
@@ -6028,7 +6065,7 @@ namespace Microsoft.Diagnostics.Tracing.Etlx
                 jitMethods.UnderlyingArray[index].Add(onInsert());
             }
 
-            RETURN:;
+        RETURN:;
 #if DEBUG
             // Confirm that we did not break anything.  
             if (_skipCount == 0)
@@ -8612,7 +8649,7 @@ namespace Microsoft.Diagnostics.Tracing.Etlx
                     pdbFileName = symReader.FindSymbolFilePathForModule(moduleFile.FilePath);
                 }
             }
-            if(pdbFileName == null)
+            if (pdbFileName == null)
             {
                 // Check to see if the file is inside of an existing Windows container.
                 // Create a new instance of WindowsDeviceToVolumeMap to avoid situations where the mappings have changed but we haven't noticed.

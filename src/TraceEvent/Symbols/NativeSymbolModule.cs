@@ -383,13 +383,13 @@ namespace Microsoft.Diagnostics.Symbols
         /// <summary>
         /// The symbol representing the module as a whole.  All global symbols are children of this symbol 
         /// </summary>
-        public Symbol GlobalSymbol 
-        { 
-            get 
+        public Symbol GlobalSymbol
+        {
+            get
             {
                 ThrowIfDisposed();
-                return new Symbol(this, m_session.globalScope); 
-            } 
+                return new Symbol(this, m_session.globalScope);
+            }
         }
 
 #if TEST_FIRST
@@ -432,13 +432,13 @@ namespace Microsoft.Diagnostics.Symbols
         /// <summary>
         /// The a unique identifier that is used to relate the DLL and its PDB.   
         /// </summary>
-        public override Guid PdbGuid 
-        { 
-            get 
+        public override Guid PdbGuid
+        {
+            get
             {
                 ThrowIfDisposed();
-                return m_session.globalScope.guid; 
-            } 
+                return m_session.globalScope.guid;
+            }
         }
 
         /// <summary>
@@ -446,13 +446,13 @@ namespace Microsoft.Diagnostics.Symbols
         /// call the age is also used to find the PDB (it represents the different 
         /// post link transformations the DLL has undergone).  
         /// </summary>
-        public override int PdbAge 
-        { 
-            get 
+        public override int PdbAge
+        {
+            get
             {
                 ThrowIfDisposed();
-                return (int)m_session.globalScope.age; 
-            } 
+                return (int)m_session.globalScope.age;
+            }
         }
 
         #region private
@@ -1048,8 +1048,14 @@ sd.exe -p minkerneldepot.sys-ntgroup.ntdev.microsoft.com:2020 print -o "C:\Users
                     }
 
                     result = result ?? new Dictionary<uint, string>();
-                    m_session.symbolById(sym.typeId, out var typeSym);
-                    result[sym.relativeVirtualAddress + (uint)sym.length] = HeapAllocationTypeInfo.GetTypeName(typeSym);
+                    try
+                    {
+                        m_session.symbolById(sym.typeId, out var typeSym);
+                        result[sym.relativeVirtualAddress + (uint)sym.length] = HeapAllocationTypeInfo.GetTypeName(typeSym);
+                    }
+                    catch (ArgumentException)
+                    {
+                    }
                 }
             });
 
@@ -1535,7 +1541,7 @@ sd.exe -p minkerneldepot.sys-ntgroup.ntdev.microsoft.com:2020 print -o "C:\Users
         struct SrcFormat
         {
             public SrcFormatHeader Header;
-            public fixed byte checksumBytes[512/8]; // this size of this may be smaller, it is controlled by the size of the `checksumSize` field
+            public fixed byte checksumBytes[512 / 8]; // this size of this may be smaller, it is controlled by the size of the `checksumSize` field
         }
 
         private static readonly Guid guidMD5 = new Guid("406ea660-64cf-4c82-b6f0-42d48172a799");
@@ -1907,7 +1913,7 @@ namespace Dia2Lib
         void Reserved70(); // prepareEnCRebuild
         #endregion
 
-        [PreserveSig] 
+        [PreserveSig]
         int dispose();
     };
 }
